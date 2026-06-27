@@ -56,7 +56,7 @@ def load_documents():  #os.listdir() returns a list of all filenames in the fold
 def split_documents(chunk_size=500,overlap=100):
     for document in documents:
         text=document['text']
-        source=document['file_name']
+        source=document['filename']
         step=chunk_size-overlap  #number of characters to skip between  
 #Why overlap matters: If an answer spans the boundary between two chunks,
 #the overlap ensures it's fully captured in at least one chunk — without it you'd lose context at chunk boundaries.        
@@ -122,8 +122,10 @@ pronouns={
 #-----------------------------------------------------------------------------------------
 #build search query
 #-----------------------------------------------------------------------------------------
-def is_pronoun_query(query):
-    if chat_history and is_pronoun_query(query):
+def resolve_query(query):
+    words = query.lower().split()
+    if chat_history and any(word in pronouns for word in words):
+
         last_answer= chat_history[-1]
         last_answer_text=last_answer.replace("Assistant: ","",1)
         first_sentence=(last_answer_text.split(".")[0]).strip()
@@ -132,9 +134,64 @@ def is_pronoun_query(query):
 #-----------------------------------------------------------------------------------------
 #ask groq llm
 #------------------------------------------------------------------------------------------
-completion=client.chat.completions.create(
-    model="llama-3.1-8b-instant" ,
-    messages=[{"role":"user",
-               "content"}]
-)
-        
+def answer_question(query):
+    resolved_query = resolve_query(query)
+    relevant_chunks = retrieve_chunks(resolved_query)
+
+    if not relevant_chunks:
+        return "I couldn't find relevant information in the documents.", "N/A"
+
+    context = "\n\n".join([f"Source: {c['source']}\n{c['content']}" for c in relevant_chunks])
+
+    prompt = f"""You are a helpful assistant. Answer the question using only the context below.
+Respond in this exact format:
+ANSWER: <your answer>
+SOURCE: <source filename>
+
+Context:
+{context}
+
+Question: {resolved_query}"""
+    completion=client.chat.completions.create(
+        model="llama-3.1-8b-instant" ,
+        messages=[{"role":"user",
+                "content":prompt}],temperature=0
+    )
+    raw=completion.choices[0].message.content.strip()
+    answer = "No answer found."
+    source = "Unknown"
+    for line in raw.splitlines():
+        if line.startswith("ANSWER:"):
+            answer=line[len("ANSWER:"):].strip()
+        elif line.startswith("SOURCE:"):
+            source=line[len("SOURCE:"):].strip()
+    return answer,source
+
+
+#main program
+print("\nLoading Documents...........\n")
+load_documents()
+if len(documents)==0:
+    print("No documents found.")
+    exit()
+split_documents()
+create_vectors()
+print("assistant is ready to answer questions")    
+
+
+#chat loop
+while True:
+    query=input("Ask Question: ").strip()
+    if query.lower() in ["quit","exit"]:
+        break
+    action=decide_action(query)
+    if action=="calculation":
+        result=calculate(query)
+        print(result)
+        continue
+
+    answer, source = answer_question(query)  
+    chat_history.append(f"Assistant: {answer}")
+    print(f"\nAnswer: {answer}")
+    print(f"Source: {source}\n")
+
