@@ -89,7 +89,7 @@ def retrieve_chunks(query, top_k=3):
         chunk = chunks[idc]  # get the actual chunk dictionary at this index
         source = chunk["source"]  # get the source filename of this chunk
         if source not in best_per_doc:  # only keep the best chunk per document (first one is best since we sorted descending)
-            best_per_doc[source] = {"content": chunk["content"], "score": score}  # store chunk content and score
+            best_per_doc[source] = {"content": chunk["content"], "score": score, "source": source}  # store chunk content and score
     selected = sorted(best_per_doc.values(), key=lambda x: x['score'], reverse=True)[:top_k]  # sort by score and return top_k results
     return selected  # returns list of top_k most relevant chunks across documents
 
@@ -143,9 +143,13 @@ def answer_question(query):
 
     context = "\n\n".join([f"Source: {c['source']}\n{c['content']}" for c in relevant_chunks])
 
-    prompt = f"""You are a helpful assistant. Answer the question using only the context below.
+    prompt = f"""You are a helpful assistant answering from an MCQ question bank.
+The context contains multiple questions and answers.
+Find the question that best matches the user's query and return its correct answer option.
+Do NOT mix answers from different questions.
+
 Respond in this exact format:
-ANSWER: <your answer>
+ANSWER: <correct option and text>
 SOURCE: <source filename>
 
 Context:
