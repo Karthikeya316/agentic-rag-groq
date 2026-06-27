@@ -92,3 +92,49 @@ def retrieve_chunks(query, top_k=3):
             best_per_doc[source] = {"content": chunk["content"], "score": score}  # store chunk content and score
     selected = sorted(best_per_doc.values(), key=lambda x: x['score'], reverse=True)[:top_k]  # sort by score and return top_k results
     return selected  # returns list of top_k most relevant chunks across documents
+
+#---------------------------------------------------------------------------------------
+#Agent Decision function
+#---------------------------------------------------------------------------------------
+def decide_action(query):
+    calculation_keywords=["calculate","find","solve","solve","compute","+","-","*","/"]
+    query_lower=query.lower()
+    for keyword in calculation_keywords:
+        if keyword in query_lower:
+            return "calculation"
+    return "document_search" 
+
+#calculator tool
+def calculate(query):
+    expression=query.lower()
+    expression=expression.replace("calculate","")
+    try:
+        result=eval(expression)
+        return f"calculate result:{result}"
+    except:
+        return "error"
+    
+#pronoun detection
+pronouns={
+    "he","she","it","they","his","her","their"
+}       
+
+#-----------------------------------------------------------------------------------------
+#build search query
+#-----------------------------------------------------------------------------------------
+def is_pronoun_query(query):
+    if chat_history and is_pronoun_query(query):
+        last_answer= chat_history[-1]
+        last_answer_text=last_answer.replace("Assistant: ","",1)
+        first_sentence=(last_answer_text.split(".")[0]).strip()
+        return first_sentence+" "+query
+    return query
+#-----------------------------------------------------------------------------------------
+#ask groq llm
+#------------------------------------------------------------------------------------------
+completion=client.chat.completions.create(
+    model="llama-3.1-8b-instant" ,
+    messages=[{"role":"user",
+               "content"}]
+)
+        
