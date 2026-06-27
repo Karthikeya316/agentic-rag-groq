@@ -49,20 +49,20 @@ This project demonstrates core RAG concepts including document chunking, TF-IDF 
 └────┬─────────────────┘
      │
      ├──── calculation ──→ ┌──────────────────┐
-     │                     │  Calculator Tool  │
+     │                     │  Calculator Tool │
      │                     └──────────────────┘
      │
-     └── document_search → ┌──────────────────────┐
-                            │   TF-IDF Retrieval    │
-                            │  (retrieve_chunks)    │
+     └── document_search →  ┌──────────────────────┐
+                            │   TF-IDF Retrieval   │
+                            │  (retrieve_chunks)   │
                             └──────────┬───────────┘
                                        ↓
                             ┌──────────────────────┐
-                            │  Groq API (LLaMA 3.1) │
+                            │  Groq API (LLaMA 3.1)│
                             └──────────┬───────────┘
                                        ↓
                             ┌──────────────────────┐
-                            │   Answer + Source     │
+                            │   Answer + Source    │
                             └──────────────────────┘
 ```
 
