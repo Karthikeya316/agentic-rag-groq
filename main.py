@@ -5,6 +5,7 @@
 import os
 from dotenv import load_dotenv
 from pypdf import PdfReader
+from markitdown import MarkItDown
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from groq import Groq
@@ -32,6 +33,7 @@ chunk_vectors=None
 #load documents
 #---------------------------------------------------------------------------------
 def load_documents():  #os.listdir() returns a list of all filenames in the folder
+    md_converter = MarkItDown()  # initialize MarkItDown once
     for file_name in os.listdir(document_folder):   #loop through all the files
         #Joins the folder path and filename into a full path — e.g. docs/report.pdf
         file_path=os.path.join(document_folder,file_name)  #create a full path
@@ -42,11 +44,16 @@ def load_documents():  #os.listdir() returns a list of all filenames in the fold
             #create a PdfReader object, loop through every page, extract text from each page, and append it to text.
             #The if page_text check skips blank/image-only pages that return None         
         elif file_name.endswith(".pdf"):  #read .pdf files
-            reader=PdfReader(file_path)   
-            for page in reader.pages:     #loop through all the pages of PDF
-                page_text=page.extract_text()  
-                if page_text:
-                    text+=page_text    #extract text from each
+            try:
+                result = md_converter.convert(file_path)  # MarkItDown converts PDF to markdown
+                text = result.text_content
+            except Exception as e:
+                print(f"MarkItDown failed for {file_name}: {e}, falling back to pypdf")
+                reader=PdfReader(file_path)   
+                for page in reader.pages:     #loop through all the pages of PDF
+                    page_text=page.extract_text()  
+                    if page_text:
+                        text+=page_text    #extract text from each
         if text.strip():   #check if there is any text
             documents.append({"filename":file_name,"text":text})
    
@@ -97,7 +104,7 @@ def retrieve_chunks(query, top_k=3):
 #Agent Decision function
 #---------------------------------------------------------------------------------------
 def decide_action(query):
-    calculation_keywords=["calculate","find","solve","solve","compute","+","-","*","/"]
+    calculation_keywords=["calculate","compute","+","*","/"]
     query_lower=query.lower()
     for keyword in calculation_keywords:
         if keyword in query_lower:
@@ -143,13 +150,20 @@ def answer_question(query):
 
     context = "\n\n".join([f"Source: {c['source']}\n{c['content']}" for c in relevant_chunks])
 
-    prompt = f"""You are a helpful assistant answering from an MCQ question bank.
-The context contains multiple questions and answers.
-Find the question that best matches the user's query and return its correct answer option.
-Do NOT mix answers from different questions.
+    prompt = f"""You are a helpful assistant answering questions from a document.
+
+If the context contains an MCQ question matching the user's query:
+- Return the correct answer option with its text
+
+If the context does not contain a matching MCQ but has relevant information:
+- Answer descriptively based on the context
+
+If the context has no relevant information at all:
+- Say "I couldn't find relevant information in the documents."
+IMPORTANT: Do NOT include SOURCE: inside the ANSWER field. Only use the exact format below.
 
 Respond in this exact format:
-ANSWER: <correct option and text>
+ANSWER: <your answer>
 SOURCE: <source filename>
 
 Context:
@@ -186,6 +200,8 @@ print("assistant is ready to answer questions")
 #chat loop
 while True:
     query=input("Ask Question: ").strip()
+    if not query:  # add this
+        continue
     if query.lower() in ["quit","exit"]:
         break
     action=decide_action(query)
