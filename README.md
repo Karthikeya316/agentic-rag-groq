@@ -8,7 +8,7 @@ A command-line Retrieval-Augmented Generation (RAG) system built using Python, G
 
 This project implements a document-based question answering system using the Retrieval-Augmented Generation (RAG) architecture. It is built with Python and powered by Groq's LLaMA 3.1 8B model.
 
-The system loads PDF and TXT documents from a local folder, splits them into overlapping chunks, and indexes them using TF-IDF vectorization. When a user submits a query, the system computes cosine similarity between the query vector and all chunk vectors to retrieve the most relevant context. An agentic decision layer routes the query — either to the document retrieval pipeline or to a calculator tool based on the nature of the query. A pronoun resolution module resolves contextual references using chat history before retrieval. The retrieved context and query are then passed to Groq's LLaMA 3.1 model, which generates a structured response with an answer and source citation.
+The system loads PDF and TXT documents from a local folder, using MarkItDown for high-quality PDF-to-Markdown conversion with pypdf as fallback... splits them into overlapping chunks, and indexes them using TF-IDF vectorization. When a user submits a query, the system computes cosine similarity between the query vector and all chunk vectors to retrieve the most relevant context. An agentic decision layer routes the query — either to the document retrieval pipeline or to a calculator tool based on the nature of the query. A pronoun resolution module resolves contextual references using chat history before retrieval. The retrieved context and query are then passed to Groq's LLaMA 3.1 model, which generates a structured response with an answer and source citation.
 
 The system preserves conversational continuity through a chat history buffer, enabling multi-turn interactions. API credentials are managed securely using environment variables.
 
@@ -28,12 +28,18 @@ This project demonstrates core RAG concepts including document chunking, TF-IDF 
 - Conversational Context Preservation
 - Multi-document Source Attribution
 - Environment Variable Management
+- MarkItDown-powered Document Preprocessing
 
 ---
 
 ## System Workflow
 
 ```text
+┌──────────────────────┐
+│   Document Loading   │
+│  (MarkItDown + pypdf)│
+└──────────┬───────────┘
+           ↓
 ┌──────────────────────┐
 │     User Query       │
 └──────────┬───────────┘
@@ -108,6 +114,7 @@ agentic-rag-groq/
 - Python Dotenv
 - pypdf
 - scikit-learn (TF-IDF, Cosine Similarity)
+- MarkItDown (Microsoft) — PDF to Markdown conversion
 
 ### AI Model
 - LLaMA 3.1 8B Instant (via Groq)
@@ -126,6 +133,7 @@ agentic-rag-groq/
 - Source attribution in every response
 - Multi-turn conversational context via chat history buffer
 - Secure API key management using environment variables
+- MarkItDown-powered PDF extraction for cleaner text quality
 
 ---
 
@@ -215,6 +223,7 @@ This project helped demonstrate:
 - Multi-document Retrieval and Source Attribution
 - Conversational Memory Handling
 - Python Modular Pipeline Design
+- PDF to Markdown conversion using MarkItDown
 
 ---
 
@@ -222,7 +231,6 @@ This project helped demonstrate:
 
 - Replace TF-IDF with semantic embeddings (FAISS + sentence-transformers)
 - Flask web interface for browser-based interaction
-- MarkItDown integration for multi-format document support
 - Persistent chat history using a database
 - Streaming responses
 - Multi-model selection
